@@ -1,0 +1,17 @@
+# 模型配置 - 测试阶段全部使用 2.0-flash
+models:
+  segment:
+    name: gemini-2.0-flash
+    max_tokens: 8192
+  translate:
+    name: gemini-2.0-flash      # 正式环境: gemini-2.5-flash
+    max_tokens: 8192
+  review:
+    name: gemini-2.0-flash      # 正式环境: gemini-3-flash-preview
+    max_tokens: 8192
+
+# 生产环境配置 (取消注释切换)
+# production:
+#   segment: gemini-2.0-flash
+#   translate: gemini-2.5-flash
+#   review: gemini-3-flash-preview
