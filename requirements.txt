@@ -1,0 +1,19 @@
+# langgraph
+langgraph>=0.2.0
+langchain-google-genai>=2.0.0
+
+# epub processing
+ebooklib>=0.18
+html2text>=2024.2.26
+
+# utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+rich>=13.0.0
+
+# async
+aiohttp>=3.9.0
+
+# dev & testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

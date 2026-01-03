@@ -1,0 +1,22 @@
+# 语言设置
+language:
+  source: en                    # 源语言 ISO 代码
+  target: zh                    # 目标语言 ISO 代码
+  # 支持任意 ISO 639-1 语言代码 (en, zh, ja, ko, fr, de, es, pt, ru, ar, vi, th, id...)
+
+# 翻译设置
+translation:
+  segment_chars: 5000           # 每段目标字符数（按段落边界切分）
+  parallel_workers: 10          # 并行数量
+  max_review_rounds: 1          # 最大审核轮次
+
+# 容错设置
+retry:
+  max_attempts: 3               # 最大重试次数
+  backoff_base: 2               # 指数退避基数 (秒)
+  backoff_max: 60               # 最大等待时间
+
+# 断点续传
+checkpoint:
+  enabled: true
+  auto_save_interval: 5         # 每5个segment保存一次
