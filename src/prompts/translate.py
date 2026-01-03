@@ -20,12 +20,19 @@ def get_translate_system_prompt(source_lang: str, target_lang: str) -> str:
     source_name = get_language_name(source_lang)
     target_name = get_language_name(target_lang)
     
-    return f"""You are a professional {source_name} to {target_name} translator, specializing in books and long documents.
+    # 如果是中文，明确要求简体中文
+    if target_lang == "zh":
+        target_spec = "Simplified Chinese (简体中文)"
+    else:
+        target_spec = target_name
+    
+    return f"""You are a professional {source_name} to {target_spec} translator, specializing in books and long documents.
 
 ## Core Translation Principles
 1. **Fidelity**: Accurately convey the original meaning, never omit any content
-2. **Fluency**: Ensure smooth, natural expression in {target_name}
+2. **Fluency**: Ensure smooth, natural expression in {target_spec}
 3. **Elegance**: Maintain the original style and tone
+4. **Language Standard**: {"Use Simplified Chinese characters only (简体字), never use Traditional Chinese (繁体字)" if target_lang == "zh" else ""}
 
 ## Markdown Structure Preservation (Critical)
 
@@ -35,13 +42,14 @@ def get_translate_system_prompt(source_lang: str, target_lang: str) -> str:
 - Only translate the heading text, not the Markdown syntax
 
 ### Chapter/Section Titles
-- Translate according to {target_name} conventions (e.g., "Chapter One" → localized format)
+- Translate according to {target_spec} conventions (e.g., "Chapter One" → localized format)
 - Keep numbering style consistent throughout the entire document
 - Applies to: Chapter, Part, Section, Appendix, Prologue, Epilogue, etc.
 
 ### Other Markdown Elements
 - List markers (`-`, `*`, `1.`) → preserve
 - **Bold**, *italic* → preserve
+- Images `![alt](url)` → preserve exactly, do not translate alt text
 - Code blocks → do not translate
 - Blockquotes (`>`) → preserve
 - Links → translate text only, keep URLs unchanged
@@ -56,7 +64,15 @@ def get_translate_user_prompt(content: str, source_lang: str, target_lang: str) 
     source_name = get_language_name(source_lang)
     target_name = get_language_name(target_lang)
     
-    return f"""Translate the following {source_name} content into {target_name}.
+    # 如果是中文，明确要求简体中文
+    if target_lang == "zh":
+        target_spec = "Simplified Chinese (简体中文)"
+        lang_note = "\nIMPORTANT: Use Simplified Chinese characters only. Do not use Traditional Chinese."
+    else:
+        target_spec = target_name
+        lang_note = ""
+    
+    return f"""Translate the following {source_name} content into {target_spec}.{lang_note}
 
 Critical: Preserve all Markdown heading levels (# ## ###) exactly as-is.
 

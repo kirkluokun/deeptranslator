@@ -53,7 +53,7 @@ def acquire_document(state: TranslationState) -> TranslationState:
             raw_content = load_markdown_file(source_path)
             book_name = extract_title(raw_content) or source_path.stem
         
-        # 确保内容被清洗
+        # 确保内容被清洗（保留图片引用）
         raw_content = clean_markdown(raw_content)
         
         # 创建数据目录
