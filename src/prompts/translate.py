@@ -2,68 +2,23 @@
 
 from ..config import config
 
-# 语言名称映射
-LANGUAGE_NAMES = {
-    "en": {"en": "English", "zh": "英语", "native": "English"},
-    "zh": {"en": "Chinese", "zh": "中文", "native": "中文"},
-    "ja": {"en": "Japanese", "zh": "日语", "native": "日本語"},
-    "ko": {"en": "Korean", "zh": "韩语", "native": "한국어"},
-    "de": {"en": "German", "zh": "德语", "native": "Deutsch"},
-    "fr": {"en": "French", "zh": "法语", "native": "Français"},
-    "es": {"en": "Spanish", "zh": "西班牙语", "native": "Español"},
-    "ru": {"en": "Russian", "zh": "俄语", "native": "Русский"},
-}
 
-# 章节翻译映射
-CHAPTER_TRANSLATIONS = {
-    "zh": {
-        "chapter": "第{}章",
-        "part": "第{}部分",
-        "numbers": ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
-                    "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"],
-    },
-    "ja": {
-        "chapter": "第{}章",
-        "part": "第{}部",
-        "numbers": ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
-                    "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"],
-    },
-    "ko": {
-        "chapter": "제{}장",
-        "part": "제{}부",
-        "numbers": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-                    "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"],
-    },
-    "en": {
-        "chapter": "Chapter {}",
-        "part": "Part {}",
-        "numbers": ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
-                    "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty"],
-    },
-}
-
-
-def get_language_name(code: str, display_lang: str = "native") -> str:
-    """获取语言显示名称"""
-    return LANGUAGE_NAMES.get(code, {}).get(display_lang, code)
+def get_language_name(code: str) -> str:
+    """获取语言显示名称，LLM 自动识别语言代码"""
+    # 常见语言提供友好名称，其他直接用 ISO 代码（LLM 都认识）
+    common = {
+        "zh": "Chinese", "en": "English", "ja": "Japanese", "ko": "Korean",
+        "de": "German", "fr": "French", "es": "Spanish", "pt": "Portuguese",
+        "ru": "Russian", "it": "Italian", "ar": "Arabic", "vi": "Vietnamese",
+        "th": "Thai", "id": "Indonesian", "nl": "Dutch", "pl": "Polish",
+    }
+    return common.get(code, code)  # 未知语言直接用代码，LLM 会识别
 
 
 def get_translate_system_prompt(source_lang: str, target_lang: str) -> str:
     """生成翻译系统提示词"""
-    source_name = get_language_name(source_lang, "native")
-    target_name = get_language_name(target_lang, "native")
-    
-    # 章节翻译规则
-    chapter_rules = ""
-    if target_lang in CHAPTER_TRANSLATIONS:
-        ch = CHAPTER_TRANSLATIONS[target_lang]
-        examples = []
-        for i, num_word in enumerate(["One", "Two", "Three"], 1):
-            if i <= len(ch["numbers"]):
-                examples.append(f'"Chapter {num_word}" / "Chapter {i}" → "{ch["chapter"].format(ch["numbers"][i-1])}"')
-        chapter_rules = "\n".join([f"- {ex}" for ex in examples])
-        chapter_rules += f'\n- "Part I" → "{ch["part"].format(ch["numbers"][0])}"'
-        chapter_rules += f'\n- "Part II" → "{ch["part"].format(ch["numbers"][1])}"'
+    source_name = get_language_name(source_lang)
+    target_name = get_language_name(target_lang)
     
     return f"""You are a professional {source_name} to {target_name} translator, specializing in books and long documents.
 
@@ -72,44 +27,38 @@ def get_translate_system_prompt(source_lang: str, target_lang: str) -> str:
 2. **Fluency**: Ensure smooth, natural expression in {target_name}
 3. **Elegance**: Maintain the original style and tone
 
-## Format Preservation Requirements (Critical)
+## Markdown Structure Preservation (Critical)
 
-### Heading Format - Must preserve 100%
-- `#` in original must remain as `#` (H1)
-- `##` in original must remain as `##` (H2)  
-- `###` in original must remain as `###` (H3)
-- The number of `#` symbols must match exactly
-- Preserve blank lines before and after headings
+### Heading Hierarchy - Preserve exactly
+- `#` → `#`, `##` → `##`, `###` → `###`, etc.
+- The number of `#` symbols defines document structure, NEVER change it
+- Only translate the heading text, not the Markdown syntax
 
-### Chapter/Part Numbering - Must be consistent
-{chapter_rules}
-- Maintain consistent numbering throughout the book
+### Chapter/Section Titles
+- Translate according to {target_name} conventions (e.g., "Chapter One" → localized format)
+- Keep numbering style consistent throughout the entire document
+- Applies to: Chapter, Part, Section, Appendix, Prologue, Epilogue, etc.
 
-### Other Format Requirements
-1. List markers (`-`, `*`, `1.`) must be preserved
-2. **Bold** and *italic* must be preserved
-3. Code blocks remain unchanged, do not translate
-4. Blockquotes (`>`) must be preserved
-5. Horizontal rules (`---`) must be preserved
-6. Link text can be translated, URLs stay unchanged
+### Other Markdown Elements
+- List markers (`-`, `*`, `1.`) → preserve
+- **Bold**, *italic* → preserve
+- Code blocks → do not translate
+- Blockquotes (`>`) → preserve
+- Links → translate text only, keep URLs unchanged
 
 ## Output Requirements
-- Output translation directly, no explanations or comments
-- Ensure output can seamlessly connect with other sections
+- Output translation directly, no explanations
 - Paragraph order must match the original exactly"""
 
 
 def get_translate_user_prompt(content: str, source_lang: str, target_lang: str) -> str:
     """生成翻译用户提示词"""
-    source_name = get_language_name(source_lang, "native")
-    target_name = get_language_name(target_lang, "native")
+    source_name = get_language_name(source_lang)
+    target_name = get_language_name(target_lang)
     
-    return f"""Please translate the following {source_name} content into {target_name}.
+    return f"""Translate the following {source_name} content into {target_name}.
 
-**Important Reminders**:
-1. All Markdown headings (# ## ###) must be preserved exactly, only translate the heading text
-2. Use consistent chapter/part numbering in {target_name}
-3. Do not omit any content, do not change paragraph order
+Critical: Preserve all Markdown heading levels (# ## ###) exactly as-is.
 
 ---
 
@@ -117,7 +66,7 @@ def get_translate_user_prompt(content: str, source_lang: str, target_lang: str) 
 
 ---
 
-Please output the translation directly:"""
+Translation:"""
 
 
 def get_translate_prompt(content: str) -> tuple[str, str]:
