@@ -83,9 +83,9 @@ class Config:
         return models[purpose]
     
     @property
-    def segment_words(self) -> int:
-        """每段目标词数"""
-        return self.settings.get("translation", {}).get("segment_words", 5000)
+    def segment_chars(self) -> int:
+        """每段目标字符数"""
+        return self.settings.get("translation", {}).get("segment_chars", 5000)
     
     @property
     def parallel_workers(self) -> int:

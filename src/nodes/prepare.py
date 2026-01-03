@@ -7,7 +7,7 @@ from dataclasses import dataclass, asdict
 
 from ..state import TranslationState, Segment, CheckpointState
 from ..config import config, DATA_DIR
-from ..utils.markdown_cleaner import count_words
+from ..utils.markdown_cleaner import count_chars
 
 
 @dataclass
@@ -16,7 +16,7 @@ class SegmentMeta:
     id: int
     start_line: int
     end_line: int
-    word_count: int
+    char_count: int  # 字符数
     preview: str  # 前50字符预览
 
 
@@ -53,17 +53,17 @@ def find_paragraph_boundaries(content: str) -> list[int]:
     return sorted(set(boundaries))
 
 
-def segment_by_rules(content: str, target_words: int = 5000) -> list[tuple[int, int]]:
+def segment_by_rules(content: str, target_chars: int = 5000) -> list[tuple[int, int]]:
     """基于规则的分段策略
     
     策略：
     1. 找到所有自然段落边界
-    2. 累积段落直到接近目标词数
+    2. 累积段落直到接近目标字符数
     3. 在最近的边界处分割
     
     Args:
         content: 文档内容
-        target_words: 每段目标词数
+        target_chars: 每段目标字符数
     
     Returns:
         [(start_line, end_line), ...] (0-indexed)
@@ -73,14 +73,14 @@ def segment_by_rules(content: str, target_words: int = 5000) -> list[tuple[int, 
     
     segments = []
     current_start = 0
-    current_words = 0
+    current_chars = 0
     
     for i, line in enumerate(lines):
-        line_words = count_words(line)
-        current_words += line_words
+        line_chars = count_chars(line)
+        current_chars += line_chars
         
-        # 如果达到目标词数，在最近的边界分割
-        if current_words >= target_words and i > current_start:
+        # 如果达到目标字符数，在最近的边界分割
+        if current_chars >= target_chars and i > current_start:
             # 找最近的边界
             closest_boundary = current_start
             for b in boundaries:
@@ -91,8 +91,8 @@ def segment_by_rules(content: str, target_words: int = 5000) -> list[tuple[int, 
             if closest_boundary > current_start:
                 segments.append((current_start, closest_boundary))
                 current_start = closest_boundary
-                # 重新计算剩余词数
-                current_words = sum(count_words(lines[j]) for j in range(closest_boundary, i + 1))
+                # 重新计算剩余字符数
+                current_chars = sum(count_chars(lines[j]) for j in range(closest_boundary, i + 1))
     
     # 添加最后一段
     if current_start < len(lines):
@@ -124,11 +124,11 @@ def prepare_segments(state: TranslationState) -> TranslationState:
     print(f"✂️  开始分段...")
     
     try:
-        target_words = config.segment_words
+        target_chars = config.segment_chars
         lines = raw_content.split('\n')
         
         # 执行分段
-        segment_ranges = segment_by_rules(raw_content, target_words)
+        segment_ranges = segment_by_rules(raw_content, target_chars)
         
         book_dir = DATA_DIR / book_id
         segments_dir = book_dir / "segments"
@@ -140,7 +140,7 @@ def prepare_segments(state: TranslationState) -> TranslationState:
             segment_id = idx + 1
             segment_lines = lines[start:end]
             segment_content = '\n'.join(segment_lines)
-            word_count = count_words(segment_content)
+            char_count = count_chars(segment_content)
             
             # 保存分段文件
             segment_file = segments_dir / f"segment_{segment_id:03d}.md"
@@ -164,19 +164,19 @@ def prepare_segments(state: TranslationState) -> TranslationState:
                 id=segment_id,
                 start_line=start + 1,  # 1-indexed
                 end_line=end,
-                word_count=word_count,
+                char_count=char_count,
                 preview=preview + "..." if len(segment_content) > 50 else preview
             )
             segment_metas.append(asdict(meta))
             
-            print(f"   段落 {segment_id}: {word_count:,} 词")
+            print(f"   段落 {segment_id}: {char_count:,} 字符")
         
         # 保存元数据
         meta_file = book_dir / "segments_meta.json"
         with open(meta_file, "w", encoding="utf-8") as f:
             json.dump({
                 "total_segments": len(segments),
-                "target_words": target_words,
+                "target_chars": target_chars,
                 "segments": segment_metas
             }, f, ensure_ascii=False, indent=2)
         
@@ -186,8 +186,8 @@ def prepare_segments(state: TranslationState) -> TranslationState:
             checkpoint.stage = "prepare"
             checkpoint.save(book_dir)
         
-        total_words = sum(m["word_count"] for m in segment_metas)
-        print(f"✅ 分段完成: {len(segments)} 段, 共 {total_words:,} 词")
+        total_chars = sum(m["char_count"] for m in segment_metas)
+        print(f"✅ 分段完成: {len(segments)} 段, 共 {total_chars:,} 字符")
         
         return {
             **state,

@@ -70,11 +70,11 @@ def clean_pandoc_artifacts(content: str) -> str:
     return content
 
 
-def clean_markdown(content: str) -> str:
+def clean_markdown(content: str, remove_images: bool = False) -> str:
     """清洗 Markdown 内容
     
     清洗规则:
-    - 去除图片引用 ![...](...) 和 <img> 标签
+    - 可选：去除图片引用 ![...](...) 和 <img> 标签 (remove_images=True)
     - 清理 Pandoc/EPUB 特定伪影 (锚点、围栏、属性)
     - 去除多余空行
     - 去除特殊控制字符
@@ -82,6 +82,7 @@ def clean_markdown(content: str) -> str:
     
     Args:
         content: 原始 Markdown 内容
+        remove_images: 是否删除图片引用，默认 False（保留图片）
     
     Returns:
         清洗后的内容
@@ -89,12 +90,12 @@ def clean_markdown(content: str) -> str:
     # 统一换行符
     content = content.replace('\r\n', '\n').replace('\r', '\n')
     
-    # 去除图片引用 ![alt](url) 或 ![alt][ref]
-    content = re.sub(r'!\[([^\]]*)\]\([^)]*\)', '', content)
-    content = re.sub(r'!\[([^\]]*)\]\[[^\]]*\]', '', content)
-    
-    # 去除 <img> 标签
-    content = re.sub(r'<img[^>]*/?>', '', content, flags=re.IGNORECASE)
+    # 可选：去除图片引用 ![alt](url) 或 ![alt][ref]
+    if remove_images:
+        content = re.sub(r'!\[([^\]]*)\]\([^)]*\)', '', content)
+        content = re.sub(r'!\[([^\]]*)\]\[[^\]]*\]', '', content)
+        # 去除 <img> 标签
+        content = re.sub(r'<img[^>]*/?>',  '', content, flags=re.IGNORECASE)
     
     # 清理 Pandoc 伪影
     content = clean_pandoc_artifacts(content)
@@ -140,19 +141,24 @@ def load_markdown_file(filepath: str | Path) -> str:
 
 
 def count_words(text: str) -> int:
-    """统计英文单词数量
+    """统计英文单词数量（已弃用，保留兼容）"""
+    words = re.findall(r'\b[a-zA-Z0-9]+\b', text)
+    return len(words)
+
+
+def count_chars(text: str) -> int:
+    """统计有效字符数（去除空白）
     
-    简单的单词计数，按空格分割
+    适用于所有语言的字符计数
     
     Args:
         text: 文本内容
     
     Returns:
-        单词数量
+        有效字符数（不含空格、换行）
     """
-    # 只统计字母数字组成的单词
-    words = re.findall(r'\b[a-zA-Z0-9]+\b', text)
-    return len(words)
+    # 去除所有空白字符后统计
+    return len(re.sub(r'\s+', '', text))
 
 
 def extract_title(content: str) -> str | None:

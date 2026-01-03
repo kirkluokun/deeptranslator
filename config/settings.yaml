@@ -1,13 +1,12 @@
 # 语言设置
 language:
-  source: en                    # 源语言代码
-  target: zh                    # 目标语言代码
-  # 支持的语言: en(英语), zh(中文), ja(日语), ko(韩语), 
-  #            de(德语), fr(法语), es(西班牙语), ru(俄语)
+  source: vi                    # 源语言 ISO 代码
+  target: zh                    # 目标语言 ISO 代码
+  # 支持任意 ISO 639-1 语言代码 (en, zh, ja, ko, fr, de, es, pt, ru, ar, vi, th, id...)
 
 # 翻译设置
 translation:
-  segment_words: 5000           # 每段目标词数
+  segment_chars: 5000           # 每段目标字符数（按段落边界切分）
   parallel_workers: 10          # 并行数量
   max_review_rounds: 1          # 最大审核轮次
 
