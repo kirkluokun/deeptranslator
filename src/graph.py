@@ -4,6 +4,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, END
 
 from .state import TranslationState
+from .config import config
 from .nodes.acquire import acquire_document
 from .nodes.prepare import prepare_segments
 from .nodes.translate import translate_segments
@@ -13,7 +14,16 @@ from .nodes.render import render_output
 
 
 def should_review(state: TranslationState) -> Literal["review", "parse"]:
-    """判断是否需要审核"""
+    """判断是否需要审核
+    
+    注意：翻译节点已内置质量检测和自动重试，
+    审核节点现在是可选的（用于更严格的人工审核场景）
+    默认跳过审核，直接进入 parse
+    """
+    # 检查配置是否启用审核
+    if not config.settings.get("translation", {}).get("enable_review", False):
+        return "parse"
+    
     # 检查是否有需要审核的段落
     for seg in state.get("segments", []):
         if seg.get("status") == "reviewing":

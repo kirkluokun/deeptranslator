@@ -6,8 +6,8 @@ from .translate import get_language_name
 
 def get_review_system_prompt(source_lang: str, target_lang: str) -> str:
     """生成审核系统提示词"""
-    source_name = get_language_name(source_lang, "native")
-    target_name = get_language_name(target_lang, "native")
+    source_name = get_language_name(source_lang)
+    target_name = get_language_name(target_lang)
     
     return f"""You are a senior translation review expert, responsible for comparing {source_name} original text with {target_name} translations.
 
@@ -39,8 +39,8 @@ def get_review_system_prompt(source_lang: str, target_lang: str) -> str:
 
 def get_review_user_prompt(original: str, translation: str, source_lang: str, target_lang: str) -> str:
     """生成审核用户提示词"""
-    source_name = get_language_name(source_lang, "native")
-    target_name = get_language_name(target_lang, "native")
+    source_name = get_language_name(source_lang)
+    target_name = get_language_name(target_lang)
     
     return f"""Please compare the following {source_name} original and {target_name} translation for quality review.
 

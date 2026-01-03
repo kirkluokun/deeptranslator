@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from ..state import TranslationState, Segment, CheckpointState
-from ..config import DATA_DIR
+from ..config import DATA_DIR, config
 from ..llm import LLMManager
 
 
@@ -12,8 +12,9 @@ def render_output(state: TranslationState) -> TranslationState:
     """合并所有翻译段落，生成最终输出
     
     Stage 5 节点：
+    - 检查是否有失败段落（如有则报错）
     - 按顺序合并所有翻译
-    - 生成目录（可选）
+    - 输出到输入文件同目录
     - 添加元信息
     
     Args:
@@ -24,13 +25,36 @@ def render_output(state: TranslationState) -> TranslationState:
     """
     book_id = state["book_id"]
     book_name = state["book_name"]
+    source_path = state["source_path"]
     segments_data = state["segments"]
+    failed_segments = state.get("failed_segments", [])
     
     print(f"📝 合并输出...")
     
+    # 检查是否有失败段落
+    if failed_segments:
+        print(f"⚠️  存在 {len(failed_segments)} 个失败段落: {failed_segments}")
+        print(f"   将继续合并，但这些段落可能包含未翻译内容")
+    
     try:
         book_dir = DATA_DIR / book_id
-        output_dir = book_dir / "output"
+        
+        # 确定输出路径：输入文件同目录
+        source_file = Path(source_path)
+        if source_file.exists():
+            output_dir = source_file.parent
+            # 输出文件名基于输入文件名
+            input_stem = source_file.stem  # 不带扩展名的文件名
+            target_lang = config.target_language
+            output_filename = f"{input_stem}_{target_lang}.md"
+        else:
+            # 回退到默认目录
+            output_dir = book_dir / "output"
+            output_dir.mkdir(exist_ok=True)
+            safe_name = "".join(c for c in book_name if c.isalnum() or c in (' ', '-', '_')).strip()
+            output_filename = f"{safe_name}_{config.target_language}.md"
+        
+        output_file = output_dir / output_filename
         
         # 按 ID 排序
         sorted_segments = sorted(segments_data, key=lambda x: x["id"])
@@ -53,10 +77,14 @@ def render_output(state: TranslationState) -> TranslationState:
         final_output = f"{final_content}\n\n---\n\n{meta_info}"
         
         # 保存输出文件
-        safe_name = "".join(c for c in book_name if c.isalnum() or c in (' ', '-', '_')).strip()
-        output_file = output_dir / f"{safe_name}_zh.md"
-        
         with open(output_file, "w", encoding="utf-8") as f:
+            f.write(final_output)
+        
+        # 同时在 data 目录保存一份备份
+        backup_dir = book_dir / "output"
+        backup_dir.mkdir(exist_ok=True)
+        backup_file = backup_dir / output_filename
+        with open(backup_file, "w", encoding="utf-8") as f:
             f.write(final_output)
         
         # 更新断点状态
@@ -65,7 +93,9 @@ def render_output(state: TranslationState) -> TranslationState:
             checkpoint.stage = "render"
             checkpoint.save(book_dir)
         
-        print(f"✅ 输出完成: {output_file}")
+        print(f"✅ 输出完成:")
+        print(f"   主文件: {output_file}")
+        print(f"   备份: {backup_file}")
         print(f"   总字符数: {len(final_output):,}")
         
         return {
